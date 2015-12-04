@@ -1,72 +1,90 @@
 import { createStore, combineReducers } from 'redux';
 import React from 'react';
 import ReactDOM from 'react-dom';
+import reactStamp from 'react-stamp';
 import deepFreeze from 'deep-freeze';
 import expect from 'expect';
 
+const stamp = reactStamp(React);
+
+
+// redux: reducers
+// ---------------
 // reducers for different parts of the state tree
+// reducer function signature accepts a state and action
 const refine = (state = 'ALL', action) => (action.type === 'REFINE_TODOS') ? action.refine : state;
 
 const todos = (state = [], action) => {
-  switch (action.type){
-    case 'ADD_TODO':
-      return [ ...state, { id: (state.length + 1), text: action.text, completed: false } ];
-      break;
-    case 'TOGGLE_COMPLETED_TODO':
-      return state.map( todo => (todo.id !== action.id) ?
-        todo :
-        Object.assign({}, todo, { completed: !todo.completed })
-      );
-      break;
-    default:
-      return state;
+  if (action.type === 'ADD_TODO') {
+    return [ ...state, { id: (state.length + 1), text: action.text, completed: false } ];
   }
+  if (action.type === 'TOGGLE_COMPLETED_TODO') {
+    return state.map( todo => (todo.id !== action.id) ?
+      todo :
+      Object.assign({}, todo, { completed: !todo.completed })
+    );
+  }
+  return state;
 };
 
-// reducer can be identified by its function signature; accepts state and action
 const reducer = combineReducers({
   refine, // es6 shorthand equivalent to refine: refine
   todos
 });
 
-// alert('changed!');
 
-const Items = ({text}) => <li>{text}</li>;
+// react: functional components
+// ----------------------------
+const todoItems = (todos, refine) => todos.map( todo => {
+  const toggleTodo = () => store.dispatch({ type: 'TOGGLE_COMPLETED_TODO', id: todo.id });
+  const style = {
+    textDecoration: todo.completed ? 'line-through' : 'none',
+    display: ((todo.completed && refine === 'ACTIVE') || ((!todo.completed) && refine === 'COMPLETED')) ?
+      'none' : 'block'
+  };
+  return <li key={todo.id} onClick={toggleTodo} style={style}>{todo.text}</li>;
+});
 
-const TodoApp = ({addTodo}) => {
-  const items = store.getState().todos.map( todo => <Items key={todo.id} text={todo.text} /> );
-  console.log(store.getState());
-  return (
-    <div>
-      <ul>{items}</ul>
-      <button onClick={ addTodo }>Add Todo</button>
-    </div>
-  );
-};
+const refinementItems = refinenment => ['all','completed','active'].map( (refine, i) => {
+  const refineStateValue = refine.toUpperCase();
+  const refineTodos = () => store.dispatch({ type: 'REFINE_TODOS', refine: refineStateValue });
+  const style = { textDecoration: refinenment === refineStateValue ? 'underline' : 'none' };
+  return <li key={i} onClick={refineTodos} style={style}>{refine}</li>;
+});
+
+const TodoApp = stamp.compose({
+  addTodo () {
+    const input = this.refs.input;
+    store.dispatch({ type: 'ADD_TODO', text: input.value });
+    input.value = '';
+  },
+  addTodoOnEnter (event) {
+    if (event.keyCode === 13) {
+      this.addTodo();
+    }
+  },
+  render (){
+    return (
+      <div>
+        <ul>{todoItems(this.props.todos, this.props.refine)}</ul>
+        <input onKeyDown={ this.addTodoOnEnter.bind(this) } type="text" ref="input" />
+        <button onClick={ this.addTodo.bind(this) }>Add Todo</button>
+        <div>Refine by: <ul>{refinementItems(this.props.refine)}</ul></div>
+      </div>
+    );
+  }
+});
 
 
-
+// initialise application
+// ----------------------
 // create store with reducer as argument
 const store = createStore(reducer);
 
-store.dispatch({
-  type: 'ADD_TODO',
-  text: 'Walk Zahnee'
-});
-store.dispatch({
-  type: 'ADD_TODO',
-  text: 'Feed Zahnee'
-});
-
-// // Update UI
+// render UI on store changes
 const render = () => {
-  ReactDOM.render(
-    <TodoApp onClick={ () => store.dispatch({ type: 'ADD_TODO', text: 'Breathe'}) } />,
-    document.getElementById('root')
-  );
+  ReactDOM.render(<TodoApp todos={store.getState().todos} refine={store.getState().refine} />, document.getElementById('root'));
 };
-
-// subscriber
 store.subscribe(render);
 render();
 

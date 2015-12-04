@@ -18,3 +18,8 @@ Redux examples with:
 
 ### plain  
 - Minimal implementation of redux (no react)
+
+
+### react-todo  
+- functional, stateful react components with stamp composition (no class keyword + refs)
+-
