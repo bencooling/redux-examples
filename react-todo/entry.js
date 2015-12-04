@@ -35,20 +35,20 @@ const reducer = combineReducers({
 
 // react: functional components
 // ----------------------------
-const todoItems = (todos, refine) => todos.map( todo => {
+const todoItems = (todos, refine) => todos.filter((todo) => {
+  if ((todo.completed && refine === 'ACTIVE') || ((!todo.completed) && refine === 'COMPLETED')){
+    return false;
+  }
+  return true;
+}).map( todo => {
   const toggleTodo = () => store.dispatch({ type: 'TOGGLE_COMPLETED_TODO', id: todo.id });
-  const style = {
-    textDecoration: todo.completed ? 'line-through' : 'none',
-    display: ((todo.completed && refine === 'ACTIVE') || ((!todo.completed) && refine === 'COMPLETED')) ?
-      'none' : 'block'
-  };
+  const style = { textDecoration: todo.completed ? 'line-through' : 'none' };
   return <li key={todo.id} onClick={toggleTodo} style={style}>{todo.text}</li>;
 });
 
 const refinementItems = refinenment => ['all','completed','active'].map( (refine, i) => {
-  const refineStateValue = refine.toUpperCase();
-  const refineTodos = () => store.dispatch({ type: 'REFINE_TODOS', refine: refineStateValue });
-  const style = { textDecoration: refinenment === refineStateValue ? 'underline' : 'none' };
+  const refineTodos = () => store.dispatch({ type: 'REFINE_TODOS', refine: refine.toUpperCase() });
+  const style = { textDecoration: refinenment === refine.toUpperCase() ? 'underline' : 'none' };
   return <li key={i} onClick={refineTodos} style={style}>{refine}</li>;
 });
 
