@@ -81,7 +81,7 @@ const TodoField = stamp.compose({
 const refinedTodos = (refine, todos) => todos.filter( t =>
   !((t.completed && refine === 'Active') || ((!t.completed) && refine === 'Completed') ));
 
-// root react component
+// presentation/dumb root component
 const App = ({ dispatch, todos, refine, toggleCompletedTodo, addTodo, refineTodos }) => {
 return (<div>
   <TodoList todos={ refinedTodos(refine, todos) } toggleCompletedTodo={ toggleCompletedTodo } />
@@ -93,7 +93,8 @@ return (<div>
 
 const store = createStore(reducer);
 
-// Wrap the component to inject dispatch and state into it
+// Wrap the root component with connect to inject dispatch and state into it
+// Considered a container component, aware of redux
 const TodoApp = connect(
   state => state,
   dispatch => {
@@ -109,21 +110,6 @@ render(
   <Provider store={store}><TodoApp /></Provider>,
   document.getElementById('root')
 );
-
-
-// initialise application
-// ----------------------
-// create store with reducer as argument
-// const store = createStore(reducer);
-
-// render UI on store changes
-// const render = () => {
-//   ReactDOM.render(<TodoApp
-//     todos={store.getState().todos}
-//     refine={store.getState().refine}
-//   />, document.getElementById('root'));
-// };
-// store.subscribe(render);
 
 
 // const testAddTodo = () => {
