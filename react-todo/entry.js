@@ -1,6 +1,7 @@
 import { createStore, combineReducers } from 'redux';
+import { Provider, connect } from 'react-redux';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { render } from 'react-dom';
 import reactStamp from 'react-stamp';
 import deepFreeze from 'deep-freeze';
 import expect from 'expect';
@@ -12,7 +13,7 @@ const stamp = reactStamp(React);
 // ---------------
 // reducers for different parts of the state tree
 // reducer function signature accepts a state and action
-const refine = (state = 'ALL', action) => (action.type === 'REFINE_TODOS') ? action.refine : state;
+const refine = (state = 'All', action) => (action.type === 'REFINE_TODOS') ? action.refine : state;
 
 const todos = (state = [], action) => {
   if (action.type === 'ADD_TODO') {
@@ -27,66 +28,102 @@ const todos = (state = [], action) => {
   return state;
 };
 
+// root reducer
 const reducer = combineReducers({
   refine, // es6 shorthand equivalent to refine: refine
   todos
 });
 
 
+// redux: action creators
+// ----------------------
+// pure functions for computing actions to be dispatched
+const addTodo = text => { return { type: 'ADD_TODO', text }; };
+const toggleCompletedTodo = id => { return {type: 'TOGGLE_COMPLETED_TODO', id}; };
+const refineTodos = refine => { return {type: 'REFINE_TODOS', refine}; };
+
+
 // react: functional components
 // ----------------------------
-const todoItems = (todos, refine) => todos.filter((todo) => {
-  if ((todo.completed && refine === 'ACTIVE') || ((!todo.completed) && refine === 'COMPLETED')){
-    return false;
-  }
-  return true;
-}).map( todo => {
-  const toggleTodo = () => store.dispatch({ type: 'TOGGLE_COMPLETED_TODO', id: todo.id });
-  const style = { textDecoration: todo.completed ? 'line-through' : 'none' };
-  return <li key={todo.id} onClick={toggleTodo} style={style}>{todo.text}</li>;
-});
+// presentation/dumb component
+const TodoList = ({todos, toggleCompletedTodo}) =>
+  <ul>{todos.map(todo =>
+    <li key={todo.id}
+        onClick={() => toggleCompletedTodo(todo.id)}
+        style={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>
+      {todo.text}
+    </li>)}
+  </ul>;
 
-const refinementItems = refinenment => ['all','completed','active'].map( (refine, i) => {
-  const refineTodos = () => store.dispatch({ type: 'REFINE_TODOS', refine: refine.toUpperCase() });
-  const style = { textDecoration: refinenment === refine.toUpperCase() ? 'underline' : 'none' };
-  return <li key={i} onClick={refineTodos} style={style}>{refine}</li>;
-});
+// presentation/dumb component
+const RefineList = ({refine, refineTodos}) =>
+  <ul>{['All','Completed','Active'].map( (r, i) =>
+    <li key={i}
+        onClick={() => refineTodos(r) }
+        style={{ textDecoration: r === refine ? 'underline' : 'none' }}>
+      {r}
+    </li>)}
+  </ul>;
 
-const TodoApp = stamp.compose({
-  addTodo () {
-    const input = this.refs.input;
-    store.dispatch({ type: 'ADD_TODO', text: input.value });
-    input.value = '';
-  },
-  addTodoOnEnter (event) {
+// presentation/dumb component w/ stamp for ref with form field SEE: Controlled Components
+const TodoField = stamp.compose({
+  render (){ return <input type="text" ref="input" onKeyDown={ event => {
     if (event.keyCode === 13) {
-      this.addTodo();
+      const input = this.refs.input;
+      this.props.addTodo(input.value.trim());
+      input.value = '';
     }
-  },
-  render (){
-    return (
-      <div>
-        <ul>{todoItems(this.props.todos, this.props.refine)}</ul>
-        <input onKeyDown={ this.addTodoOnEnter.bind(this) } type="text" ref="input" />
-        <button onClick={ this.addTodo.bind(this) }>Add Todo</button>
-        <div>Refine by: <ul>{refinementItems(this.props.refine)}</ul></div>
-      </div>
-    );
+  }} />;
   }
 });
+
+// non-react business logic function
+const refinedTodos = (refine, todos) => todos.filter( t =>
+  !((t.completed && refine === 'Active') || ((!t.completed) && refine === 'Completed') ));
+
+// root react component
+const App = ({ dispatch, todos, refine, toggleCompletedTodo, addTodo, refineTodos }) => {
+return (<div>
+  <TodoList todos={ refinedTodos(refine, todos) } toggleCompletedTodo={ toggleCompletedTodo } />
+  <TodoField addTodo={ addTodo } />
+  <div>Refine by: <RefineList refine={refine} refineTodos={refineTodos } /></div>
+  <p> {todos.length - (refinedTodos('Completed', todos)).length} items left</p>
+</div>
+)};
+
+const store = createStore(reducer);
+
+// Wrap the component to inject dispatch and state into it
+const TodoApp = connect(
+  state => state,
+  dispatch => {
+    return {
+      toggleCompletedTodo: id => dispatch(toggleCompletedTodo(id)),
+      addTodo: text => dispatch(addTodo(text)),
+      refineTodos: refine => dispatch(refineTodos(refine))
+    };
+  }
+)(App);
+
+render(
+  <Provider store={store}><TodoApp /></Provider>,
+  document.getElementById('root')
+);
 
 
 // initialise application
 // ----------------------
 // create store with reducer as argument
-const store = createStore(reducer);
+// const store = createStore(reducer);
 
 // render UI on store changes
-const render = () => {
-  ReactDOM.render(<TodoApp todos={store.getState().todos} refine={store.getState().refine} />, document.getElementById('root'));
-};
-store.subscribe(render);
-render();
+// const render = () => {
+//   ReactDOM.render(<TodoApp
+//     todos={store.getState().todos}
+//     refine={store.getState().refine}
+//   />, document.getElementById('root'));
+// };
+// store.subscribe(render);
 
 
 // const testAddTodo = () => {
