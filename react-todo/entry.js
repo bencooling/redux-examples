@@ -11,13 +11,16 @@ const stamp = reactStamp(React);
 
 // redux: reducers
 // ---------------
-// reducers for different parts of the state tree
+// split reducers for different parts of the state tree
 // reducer function signature accepts a state and action
 const refine = (state = 'All', action) => (action.type === 'REFINE_TODOS') ? action.refine : state;
 
 const todos = (state = [], action) => {
   if (action.type === 'ADD_TODO') {
-    return [ ...state, { id: (state.length + 1), text: action.text, completed: false } ];
+    return [ { id: (state.length + 1), text: action.text, disabled: true, completed: false }, ...state ];
+  }
+  if (action.type === 'DELETE_TODO') {
+    return state.filter(todo => todo.id !== action.id )
   }
   if (action.type === 'TOGGLE_COMPLETED_TODO') {
     return state.map( todo => (todo.id !== action.id) ?
@@ -25,10 +28,16 @@ const todos = (state = [], action) => {
       Object.assign({}, todo, { completed: !todo.completed })
     );
   }
+  if (action.type === 'EDIT_TODO') {
+    return state.map( todo => (todo.id !== action.id) ?
+      todo :
+      Object.assign({}, todo, { disabled: action.disabled })
+    );
+  }
   return state;
 };
 
-// root reducer
+// root reducer: shape of single state tree
 const reducer = combineReducers({
   refine, // es6 shorthand equivalent to refine: refine
   todos
@@ -39,23 +48,46 @@ const reducer = combineReducers({
 // ----------------------
 // pure functions for computing actions to be dispatched
 const addTodo = text => { return { type: 'ADD_TODO', text }; };
-const toggleCompletedTodo = id => { return {type: 'TOGGLE_COMPLETED_TODO', id}; };
-const refineTodos = refine => { return {type: 'REFINE_TODOS', refine}; };
+const toggleCompletedTodo = id => { return { type: 'TOGGLE_COMPLETED_TODO', id }; };
+const deleteTodo = id => { return { type: 'DELETE_TODO', id }; };
+const refineTodos = refine => { return { type: 'REFINE_TODOS', refine }; };
+const editTodo = (id, disabled) => { return { type: 'EDIT_TODO', id, disabled }; }
 
 
 // react: functional components
 // ----------------------------
-// presentation/dumb component
-const TodoList = ({todos, toggleCompletedTodo}) =>
+// all components are presentation/dumb components
+// state and callbacks that dispatch actions to edit state are passed through as props
+// this keyword for accessing mutable form fields in callbacks is provided by stamp composition (no new keyword)
+
+const TodoInput = stamp.compose({
+  render (){
+    const {id, disabled, completed, text, readableTodo, writeableTodo} = this.props;
+    return <input ref="input" disabled={ disabled } defaultValue={ text }
+    style={ { textDecoration: (completed) ? 'line-through': 'none' } }
+    onBlur={ () => { readableTodo(id) } }
+    onDoubleClick={ () => { writeableTodo(id) } }
+    onKeyDown= { (event) => {
+      if (event.keyCode === 13) {
+        this.refs.input.blur(); // <- why we need stamp.compose
+        readableTodo(id);
+      }
+    }} />;
+  }
+});
+
+const TodoCheckbox = ({id, completed, toggleCompletedTodo}) =>
+  <input type="checkbox" checked={ completed } onClick={ () => toggleCompletedTodo(id) } />;
+
+const TodoList = ({todos, events}) =>
   <ul>{todos.map(todo =>
-    <li key={todo.id}
-        onClick={() => toggleCompletedTodo(todo.id)}
-        style={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>
-      {todo.text}
+    <li key={todo.id}>
+      <TodoCheckbox { ...Object.assign({}, todo, events) }  />
+      <TodoInput { ...Object.assign({}, todo, events) } />
+      <div onClick={ () => { events.deleteTodo(todo.id); } }>&times;</div>
     </li>)}
   </ul>;
 
-// presentation/dumb component
 const RefineList = ({refine, refineTodos}) =>
   <ul>{['All','Completed','Active'].map( (r, i) =>
     <li key={i}
@@ -65,15 +97,15 @@ const RefineList = ({refine, refineTodos}) =>
     </li>)}
   </ul>;
 
-// presentation/dumb component w/ stamp for ref with form field SEE: Controlled Components
 const TodoField = stamp.compose({
-  render (){ return <input type="text" ref="input" onKeyDown={ event => {
-    if (event.keyCode === 13) {
-      const input = this.refs.input;
-      this.props.addTodo(input.value.trim());
-      input.value = '';
-    }
-  }} />;
+  render (){
+    return <input type="text" ref="input" onKeyDown={ event => {
+      if (event.keyCode === 13) {
+        const input = this.refs.input;
+        this.props.addTodo(input.value.trim());
+        input.value = '';
+      }
+    }} />;
   }
 });
 
@@ -81,29 +113,35 @@ const TodoField = stamp.compose({
 const refinedTodos = (refine, todos) => todos.filter( t =>
   !((t.completed && refine === 'Active') || ((!t.completed) && refine === 'Completed') ));
 
-// presentation/dumb root component
-const App = ({ dispatch, todos, refine, toggleCompletedTodo, addTodo, refineTodos }) => {
-return (<div>
-  <TodoList todos={ refinedTodos(refine, todos) } toggleCompletedTodo={ toggleCompletedTodo } />
+// root component (still presentation/dumb!)
+const App = ({ todos, refine, deleteTodo, toggleCompletedTodo, addTodo, refineTodos, writeableTodo, readableTodo }) =>
+<div>
+  <TodoList
+    todos={ refinedTodos(refine, todos) }
+    events={ { toggleCompletedTodo, writeableTodo, readableTodo, deleteTodo } }
+  />
   <TodoField addTodo={ addTodo } />
   <div>Refine by: <RefineList refine={refine} refineTodos={refineTodos } /></div>
   <p> {todos.length - (refinedTodos('Completed', todos)).length} items left</p>
-</div>
-)};
+</div>;
 
+
+// redux: inject into root component
+// ---------------------------------
 const store = createStore(reducer);
 
 // Wrap the root component with connect to inject dispatch and state into it
 // Considered a container component, aware of redux
 const TodoApp = connect(
   state => state,
-  dispatch => {
-    return {
-      toggleCompletedTodo: id => dispatch(toggleCompletedTodo(id)),
-      addTodo: text => dispatch(addTodo(text)),
-      refineTodos: refine => dispatch(refineTodos(refine))
-    };
-  }
+  dispatch => { return {
+    toggleCompletedTodo: id => dispatch(toggleCompletedTodo(id)),
+    addTodo: text => dispatch(addTodo(text)),
+    deleteTodo: id => dispatch(deleteTodo(id)),
+    refineTodos: refine => dispatch(refineTodos(refine)),
+    writeableTodo: id => dispatch(editTodo(id, false)),
+    readableTodo: id => dispatch(editTodo(id, true))
+  }}
 )(App);
 
 render(

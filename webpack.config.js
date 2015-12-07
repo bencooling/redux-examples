@@ -8,8 +8,8 @@ var webpack = require('webpack');
 // webpack.config.js
 module.exports = {
   entry: [
-    'webpack-dev-server/client?http://0.0.0.0:8000',
-    'webpack/hot/dev-server',
+    'webpack-dev-server/client?http://localhost:8000',
+    // 'webpack/hot/dev-server',
     Path.join(examplePath, 'entry.js')
   ],
   output: {
@@ -22,7 +22,8 @@ module.exports = {
       {
         test: /\.js$/,
         exclude: /node_modules/,
-        loaders: ['react-hot', 'babel?presets[]=react,presets[]=es2015,presets[]=stage-3']
+        loaders: ['babel?presets[]=react,presets[]=es2015,presets[]=stage-3'] // react-hot !w/ react 0.14
+        // loaders: ['react-hot', 'babel?presets[]=react,presets[]=es2015,presets[]=stage-3']
       }
     ]
   },

@@ -22,4 +22,9 @@ Redux examples with:
 
 ### react-todo  
 - functional, stateful react components with stamp composition (no class keyword + refs)
--
+- redux-devtools
+
+
+## Note
+
+- waiting on react-hot-loader & redux-dev-tools to work with React 0.14
