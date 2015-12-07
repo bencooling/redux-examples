@@ -1,18 +1,13 @@
 # redux examples
 
-Redux examples with:
-- es6 source code transpiled with babel
-- react functional components
-- npm run script to run specific examples for local server
-- [local server](http://webpack.github.io/docs/webpack-dev-server.html) with hot reload (inc. [react](https://gaearon.github.io/react-hot-loader/))
-- nodemon for hot reloading terminal-only examples
+**features**  
+- redux for single application state tree
+- es6 source code transpiled with babel, bundled with webpack
+- react for declarative view layer, with functional stateless components
+- stamp composition (no classes!)
+- npm run script to run specific examples for [webpack dev server](http://webpack.github.io/docs/webpack-dev-server.html)
+- nodemon for live reloading examples where stand output is sent to terminal
 
-
-## commands
-
-**Run local server**  
-- Hot reload react components & modules  
-`npm run serve -- --example=react-todo`
 
 ## examples
 
@@ -21,10 +16,10 @@ Redux examples with:
 
 
 ### react-todo  
-- functional, stateful react components with stamp composition (no class keyword + refs)
-- redux-devtools
 
+**run example**  
+`npm run serve -- --example=react-todo`
 
-## Note
-
-- waiting on react-hot-loader & redux-dev-tools to work with React 0.14
+**features**  
+- todomvc (minus css, with minimal markup)
+- time travel with redux-devtools!

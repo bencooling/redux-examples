@@ -1,13 +1,10 @@
+import { createStore, combineReducers } from 'redux';
+import { Provider, connect } from 'react-redux';
 import React from 'react';
 import { render } from 'react-dom';
 import reactStamp from 'react-stamp';
 import deepFreeze from 'deep-freeze';
 import expect from 'expect';
-import { compose, createStore, combineReducers, applyMiddleware } from 'redux';
-import { Provider, connect } from 'react-redux';
-import { createDevTools, persistState } from 'redux-devtools';
-import LogMonitor from 'redux-devtools-log-monitor';
-import DockMonitor from 'redux-devtools-dock-monitor';
 
 const stamp = reactStamp(React);
 
@@ -23,7 +20,7 @@ const todos = (state = [], action) => {
     return [ { id: (state.length + 1), text: action.text, disabled: true, completed: false }, ...state ];
   }
   if (action.type === 'DELETE_TODO') {
-    return state.filter(todo => todo.id !== action.id );
+    return state.filter(todo => todo.id !== action.id )
   }
   if (action.type === 'TOGGLE_COMPLETED_TODO') {
     return state.map( todo => (todo.id !== action.id) ?
@@ -54,7 +51,7 @@ const addTodo = text => { return { type: 'ADD_TODO', text }; };
 const toggleCompletedTodo = id => { return { type: 'TOGGLE_COMPLETED_TODO', id }; };
 const deleteTodo = id => { return { type: 'DELETE_TODO', id }; };
 const refineTodos = refine => { return { type: 'REFINE_TODOS', refine }; };
-const editTodo = (id, disabled) => { return { type: 'EDIT_TODO', id, disabled }; };
+const editTodo = (id, disabled) => { return { type: 'EDIT_TODO', id, disabled }; }
 
 
 // react: functional components
@@ -66,19 +63,15 @@ const editTodo = (id, disabled) => { return { type: 'EDIT_TODO', id, disabled };
 const TodoInput = stamp.compose({
   render (){
     const {id, disabled, completed, text, readableTodo, writeableTodo} = this.props;
-    return (
-      <input
-        ref="input"
-        disabled={ disabled } defaultValue={ text }
-        style={ { textDecoration: (completed) ? 'line-through' : 'none' } }
-        onBlur={ () => readableTodo(id) }
-        onDoubleClick={ () => writeableTodo(id) }
-        onKeyDown= { (event) => {
-          if (event.keyCode === 13) {
-            this.refs.input.blur(); // <- why we need stamp.compose
-          }
-        }} />
-    );
+    return <input ref="input" disabled={ disabled } defaultValue={ text }
+    style={ { textDecoration: (completed) ? 'line-through': 'none' } }
+    onBlur={ () => { readableTodo(id) } }
+    onDoubleClick={ () => { writeableTodo(id) } }
+    onKeyDown= { (event) => {
+      if (event.keyCode === 13) {
+        this.refs.input.blur(); // <- why we need stamp.compose
+      }
+    }} />;
   }
 });
 
@@ -134,46 +127,24 @@ const App = ({ todos, refine, deleteTodo, toggleCompletedTodo, addTodo, refineTo
 
 // redux: inject into root component
 // ---------------------------------
-const DevTools = createDevTools(
-  <DockMonitor toggleVisibilityKey='H' changePositionKey='Q'>
-    <LogMonitor />
-  </DockMonitor>
-);
-
-const finalCreateStore = compose(
-  DevTools.instrument(),
-  persistState(
-    window.location.href.match(
-      /[?&]debug_session=([^&]+)\b/
-    )
-  )
-)(createStore);
-
-const store = finalCreateStore(reducer);
+const store = createStore(reducer);
 
 // Wrap the root component with connect to inject dispatch and state into it
 // Considered a container component, aware of redux
 const TodoApp = connect(
   state => state,
-  dispatch => {
-    return {
-      toggleCompletedTodo: id => dispatch(toggleCompletedTodo(id)),
-      addTodo: text => dispatch(addTodo(text)),
-      deleteTodo: id => dispatch(deleteTodo(id)),
-      refineTodos: refine => dispatch(refineTodos(refine)),
-      writeableTodo: id => dispatch(editTodo(id, false)),
-      readableTodo: id => dispatch(editTodo(id, true))
-    };
-  }
+  dispatch => { return {
+    toggleCompletedTodo: id => dispatch(toggleCompletedTodo(id)),
+    addTodo: text => dispatch(addTodo(text)),
+    deleteTodo: id => dispatch(deleteTodo(id)),
+    refineTodos: refine => dispatch(refineTodos(refine)),
+    writeableTodo: id => dispatch(editTodo(id, false)),
+    readableTodo: id => dispatch(editTodo(id, true))
+  }}
 )(App);
 
 render(
-  <Provider store={store}>
-    <div>
-      <TodoApp />
-      <DevTools />
-    </div>
-  </Provider>,
+  <Provider store={store}><TodoApp /></Provider>,
   document.getElementById('root')
 );
 

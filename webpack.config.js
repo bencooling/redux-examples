@@ -7,9 +7,10 @@ var webpack = require('webpack');
 
 // webpack.config.js
 module.exports = {
+  devtool: 'eval',
   entry: [
     'webpack-dev-server/client?http://localhost:8000',
-    // 'webpack/hot/dev-server',
+    'webpack/hot/only-dev-server',
     Path.join(examplePath, 'entry.js')
   ],
   output: {
